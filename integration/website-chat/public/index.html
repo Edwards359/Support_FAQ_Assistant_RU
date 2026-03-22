@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Support FAQ Assistant RU — демо</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 760px; margin: 24px auto; padding: 0 12px; }
+      #chat { border: 1px solid #ddd; border-radius: 8px; padding: 12px; min-height: 280px; margin-bottom: 12px; }
+      .msg { margin: 10px 0; line-height: 1.4; }
+      .user { color: #1d4ed8; }
+      .bot { color: #111827; }
+      .warn { color: #b45309; font-size: 13px; }
+      textarea { width: 100%; min-height: 90px; padding: 10px; }
+      button { margin-top: 8px; padding: 10px 14px; }
+    </style>
+  </head>
+  <body>
+    <h1>Support FAQ Assistant RU</h1>
+    <p>Демо чата: FAQ и инструкции. Сложные случаи помечаются как эскалация.</p>
+    <p class="warn" id="limit-hint"></p>
+    <div id="chat"></div>
+    <textarea id="input" maxlength="2000" placeholder="Например: Как восстановить пароль?"></textarea>
+    <br />
+    <button id="send">Отправить</button>
+    <p class="warn" id="handoff"></p>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const input = document.getElementById("input");
+      const send = document.getElementById("send");
+      const handoff = document.getElementById("handoff");
+      const limitHint = document.getElementById("limit-hint");
+
+      fetch("/config")
+        .then((r) => r.json())
+        .then((cfg) => {
+          const n = cfg.max_input_chars ?? 2000;
+          input.maxLength = n;
+          limitHint.textContent = `До ${n} символов в одном сообщении — так экономнее токены.`;
+        })
+        .catch(() => {
+          limitHint.textContent = "До 2000 символов в одном сообщении — так экономнее токены.";
+        });
+
+      function addMessage(text, who) {
+        const div = document.createElement("div");
+        div.className = `msg ${who}`;
+        div.textContent = `${who === "user" ? "Вы" : "Ассистент"}: ${text}`;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      send.addEventListener("click", async () => {
+        const message = input.value.trim();
+        if (!message) return;
+        handoff.textContent = "";
+        addMessage(message, "user");
+        input.value = "";
+
+        try {
+          const res = await fetch("/chat/support", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            const err =
+              data.error === "message_too_long"
+                ? `Сообщение слишком длинное (макс. ${data.max_input_chars ?? ""} символов). Сократите текст.`
+                : data.error || "Ошибка запроса";
+            addMessage(err, "bot");
+            return;
+          }
+          addMessage(data.reply || "Нет ответа", "bot");
+          if (data.handoff_required) {
+            handoff.textContent = "Требуется подключение сотрудника поддержки.";
+          }
+        } catch {
+          addMessage("Ошибка соединения с сервером.", "bot");
+        }
+      });
+    </script>
+  </body>
+</html>

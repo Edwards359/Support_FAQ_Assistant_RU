@@ -1,0 +1,21 @@
+# Секреты — никогда не коммитить
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Зависимости
+node_modules/
+
+# Логи и отладка
+*.log
+npm-debug.log*
+
+# ОС
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Локальные настройки редактора (по желанию раскомментируйте)
+# .vscode/
+# .idea/
