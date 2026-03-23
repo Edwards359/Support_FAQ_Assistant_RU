@@ -10,6 +10,7 @@ node_modules/
 # Логи и отладка
 *.log
 npm-debug.log*
+integration/website-chat/data/
 
 # ОС
 .DS_Store
